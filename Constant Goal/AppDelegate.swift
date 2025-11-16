@@ -46,26 +46,25 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         UNUserNotificationCenter.current().setNotificationCategories([category])
     }
     
-    // 1) Called when a notification is about to be shown while app is in foreground
+    // Show notification while app is in foreground
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         print("👀 willPresent fired for id: \(notification.request.identifier)")
-        
-        // Extract goalId from userInfo
         let userInfo = notification.request.content.userInfo
+        print("   userInfo in willPresent: \(userInfo)")
+        
         if let goalIdString = userInfo["goalId"] as? String,
            let goalId = UUID(uuidString: goalIdString) {
             GoalsDataStore.shared.handleNotificationFired(for: goalId)
         }
         
-        // Show it as a banner even when app is open
         completionHandler([.banner, .sound, .badge])
     }
 
-    // 2) Called when the user taps the notification or one of the actions (Yes/No)
+    // Handle user tapping Yes / No
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
@@ -74,14 +73,15 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         print("🎯 didReceive response: \(response.actionIdentifier)")
         
         let userInfo = response.notification.request.content.userInfo
-
+        print("   userInfo in didReceive: \(userInfo)")
+        
         guard let goalIdString = userInfo["goalId"] as? String,
-              let goalId = UUID(uuidString: goalIdString)
-        else {
+              let goalId = UUID(uuidString: goalIdString) else {
+            print("⚠️ Could not parse goalId in didReceive")
             completionHandler()
             return
         }
-        
+
         let answer: GoalAnswer = {
             switch response.actionIdentifier {
             case "YES_ACTION": return .yes
@@ -89,6 +89,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
             default:           return .none
             }
         }()
+        
+        print("   → mapping to answer: \(answer) for goal \(goalId)")
         
         GoalsDataStore.shared.recordResponse(
             goalId: goalId,

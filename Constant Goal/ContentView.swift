@@ -67,9 +67,14 @@ struct GoalRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                Text("Responses: \(goal.responses.count)")
+                    .font(.caption2)
+                    .foregroundColor(.blue)
             }
-            
+        
+
             Spacer()
+    
             
             Button {
                 viewModel.editingGoal = goal
@@ -86,7 +91,6 @@ struct GoalRow: View {
                     .font(.title2)
             }
             .buttonStyle(.borderless)
-            .padding(.trailing, 4)
             
             Button(role: .destructive) {
                 viewModel.delete(goal: goal)
@@ -94,8 +98,14 @@ struct GoalRow: View {
                 Image(systemName: "trash")
             }
             .buttonStyle(.borderless)
+            .padding(.trailing, 4)
+            
+            NavigationLink {
+                GoalSessionsView(goalID: goal.id)
+            } label: {
+            }
+            .buttonStyle(.borderless)
         }
         .padding(.vertical, 4)
     }
 }
-

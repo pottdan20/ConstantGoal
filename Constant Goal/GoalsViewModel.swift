@@ -18,12 +18,6 @@ final class GoalsViewModel: ObservableObject {
         saveGoals()
     }
     
-    func delete(goal: Goal) {
-        if let index = goals.firstIndex(of: goal) {
-            deleteGoal(at: IndexSet(integer: index))
-        }
-    }
-    
     func updateGoal(_ updated: Goal) {
         guard let index = goals.firstIndex(where: { $0.id == updated.id }) else { return }
         let wasActive = goals[index].isActive
@@ -34,7 +28,6 @@ final class GoalsViewModel: ObservableObject {
             
             let seconds = TimeInterval(max(updated.intervalMinutes * 60, 1))
             goals[index].nextFireDate = Date().addingTimeInterval(seconds)
-            
             NotificationManager.shared.scheduleNotification(for: goals[index])
         }
         
@@ -46,31 +39,28 @@ final class GoalsViewModel: ObservableObject {
         goals[index].isActive.toggle()
 
         if goals[index].isActive {
-            // Start / resume: schedule and set nextFireDate
             let seconds = TimeInterval(max(goals[index].intervalMinutes * 60, 1))
             let newNext = Date().addingTimeInterval(seconds)
             goals[index].nextFireDate = newNext
             print("🚀 Starting goal '\(goals[index].title)', nextFireDate = \(newNext)")
-
+            
             NotificationManager.shared.scheduleNotification(for: goals[index])
         } else {
-            // Pause: record a session end marker + clear nextFireDate
             print("🛑 Pausing goal '\(goals[index].title)' – inserting sessionEnd")
-
+            
             let endResponse = GoalResponse(
                 answer: .sessionEnd,
                 timestamp: Date()
             )
             goals[index].responses.append(endResponse)
-
+            
             goals[index].nextFireDate = nil
             NotificationManager.shared.cancelGoalNotification(goal: goals[index])
         }
 
         saveGoals()
     }
-
-
+    
     func deleteGoal(at offsets: IndexSet) {
         for index in offsets {
             let goal = goals[index]
@@ -80,7 +70,13 @@ final class GoalsViewModel: ObservableObject {
         saveGoals()
     }
     
-    // Called from GoalsDataStore when a Yes/No is recorded
+    func delete(goal: Goal) {
+        if let index = goals.firstIndex(of: goal) {
+            deleteGoal(at: IndexSet(integer: index))
+        }
+    }
+    
+    /// Called from GoalsDataStore when responses change (Yes/No taps)
     func didUpdateResponses() {
         saveGoals()
     }
@@ -91,6 +87,10 @@ final class GoalsViewModel: ObservableObject {
         do {
             let data = try JSONEncoder().encode(goals)
             UserDefaults.standard.set(data, forKey: storageKey)
+            print("💾 Saved \(goals.count) goals")
+            for goal in goals {
+                print("   • '\(goal.title)': \(goal.responses.count) responses")
+            }
         } catch {
             print("❌ Failed to save goals: \(error)")
         }
@@ -98,11 +98,16 @@ final class GoalsViewModel: ObservableObject {
     
     private func loadGoals() {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else {
+            print("📂 No saved goals found in UserDefaults")
             return
         }
         do {
             let decoded = try JSONDecoder().decode([Goal].self, from: data)
             goals = decoded
+            print("📂 Loaded \(goals.count) goals from UserDefaults")
+            for goal in goals {
+                print("   • '\(goal.title)': \(goal.responses.count) responses")
+            }
         } catch {
             print("❌ Failed to load goals: \(error)")
         }
