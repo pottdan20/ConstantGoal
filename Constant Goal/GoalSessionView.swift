@@ -72,6 +72,7 @@ struct GoalSessionsView: View {
         let totalResponses: Int
         let isActive: Bool
         let successThreshold: Int
+        let sessionTitle: String?
         
         var yesNoDenominator: Int {
             yesCount + noCount
@@ -106,6 +107,7 @@ struct GoalSessionsView: View {
             
             let isNewestSession = (chronologicalIndex == total - 1)
             let isActiveSession = goal.isActive && isNewestSession
+            let storedTitle = goal.sessionTitles[chronologicalIndex]  // 👈 NEW
             
             return SessionSummary(
                 sessionNumber: sessionNumber,
@@ -117,7 +119,8 @@ struct GoalSessionsView: View {
                 noCount: no,
                 totalResponses: session.count,
                 isActive: isActiveSession,
-                successThreshold: goal.successThreshold
+                successThreshold: goal.successThreshold,
+                sessionTitle: storedTitle
             )
         }
     }
@@ -227,8 +230,13 @@ private struct SessionRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Session \(summary.sessionNumber)")
-                    .font(.headline)
+                if let name = summary.sessionTitle, !name.isEmpty {
+                            Text(name)
+                                .font(.headline)
+                        } else {
+                            Text("Session \(summary.sessionNumber)")
+                                .font(.headline)
+                        }
                 
                 Spacer()
                 

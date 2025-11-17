@@ -15,7 +15,14 @@ struct ContentView: View {
                 } else {
                     List {
                         ForEach(viewModel.goals) { goal in
-                            GoalRow(goal: goal)
+                            NavigationLink {
+                                GoalSessionsView(goalID: goal.id)
+                            } label: {
+                                GoalRow(goal: goal) { goalToEdit in
+                                    viewModel.editingGoal = goalToEdit
+                                    isPresentingForm = true
+                                }
+                            }
                         }
                         .onDelete(perform: viewModel.deleteGoal)
                     }
@@ -41,6 +48,7 @@ struct ContentView: View {
 struct GoalRow: View {
     @EnvironmentObject var viewModel: GoalsViewModel
     let goal: Goal
+    let onEdit: (Goal) -> Void
     
     private static let timeFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -67,17 +75,16 @@ struct GoalRow: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                
                 Text("Responses: \(goal.responses.count)")
                     .font(.caption2)
                     .foregroundColor(.blue)
             }
-        
 
             Spacer()
-    
             
             Button {
-                viewModel.editingGoal = goal
+                onEdit(goal)
             } label: {
                 Image(systemName: "pencil")
             }
@@ -99,12 +106,6 @@ struct GoalRow: View {
             }
             .buttonStyle(.borderless)
             .padding(.trailing, 4)
-            
-            NavigationLink {
-                GoalSessionsView(goalID: goal.id)
-            } label: {
-            }
-            .buttonStyle(.borderless)
         }
         .padding(.vertical, 4)
     }
