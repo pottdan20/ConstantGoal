@@ -7,7 +7,8 @@ struct Goal: Identifiable, Codable, Equatable {
     var isActive: Bool
     var nextFireDate: Date?
     var responses: [GoalResponse]
-    var successThreshold: Int   // 0–100, e.g. 80 = 80% Yes is “success”
+    var successThreshold: Int   // already added earlier
+    var sessionTitles: [Int: String]   // 👈 NEW: keyed by chronological session index
     
     init(
         id: UUID = UUID(),
@@ -16,7 +17,8 @@ struct Goal: Identifiable, Codable, Equatable {
         isActive: Bool = false,
         nextFireDate: Date? = nil,
         responses: [GoalResponse] = [],
-        successThreshold: Int = 80
+        successThreshold: Int = 80,
+        sessionTitles: [Int: String] = [:]
     ) {
         self.id = id
         self.title = title
@@ -25,12 +27,18 @@ struct Goal: Identifiable, Codable, Equatable {
         self.nextFireDate = nextFireDate
         self.responses = responses
         self.successThreshold = successThreshold
+        self.sessionTitles = sessionTitles
     }
     
-    // MARK: - Codable (with default for old saved data)
-    
     enum CodingKeys: String, CodingKey {
-        case id, title, intervalMinutes, isActive, nextFireDate, responses, successThreshold
+        case id
+        case title
+        case intervalMinutes
+        case isActive
+        case nextFireDate
+        case responses
+        case successThreshold
+        case sessionTitles
     }
     
     init(from decoder: Decoder) throws {
@@ -42,5 +50,6 @@ struct Goal: Identifiable, Codable, Equatable {
         nextFireDate = try container.decodeIfPresent(Date.self, forKey: .nextFireDate)
         responses = try container.decodeIfPresent([GoalResponse].self, forKey: .responses) ?? []
         successThreshold = try container.decodeIfPresent(Int.self, forKey: .successThreshold) ?? 80
+        sessionTitles = try container.decodeIfPresent([Int: String].self, forKey: .sessionTitles) ?? [:]
     }
 }

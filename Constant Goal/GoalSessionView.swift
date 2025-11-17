@@ -33,7 +33,7 @@ struct GoalSessionsView: View {
                         NavigationLink {
                             SessionDetailView(
                                 goalID: goalID,
-                                sessionIndex: summary.index
+                                sessionIndex: summary.chronologicalIndex
                             )
                         } label: {
                             SessionRowView(summary: summary)
@@ -49,7 +49,8 @@ struct GoalSessionsView: View {
     
     struct SessionSummary: Identifiable {
         let id = UUID()
-        let index: Int      // Session number (1 = oldest, N = newest)
+        let sessionNumber: Int      // 1 = oldest, N = newest (for display)
+        let chronologicalIndex: Int // 0 = oldest, N-1 = newest (for identity)
         let start: Date
         let end: Date
         let duration: TimeInterval
@@ -57,7 +58,7 @@ struct GoalSessionsView: View {
         let noCount: Int
         let totalResponses: Int
         let isActive: Bool
-        let successThreshold: Int   // 👈 from Goal
+        let successThreshold: Int
         
         var yesNoDenominator: Int {
             yesCount + noCount
@@ -70,11 +71,12 @@ struct GoalSessionsView: View {
     }
 
 
+
     
     // MARK: - Build sessions from responses
     private func buildSessionSummaries(for goal: Goal) -> [SessionSummary] {
         let chronological = splitIntoSessionsByEnd(responses: goal.responses)
-        let reversed = Array(chronological.reversed())
+        let reversed = Array(chronological.reversed())   // newest → oldest
         let total = chronological.count
         
         return reversed.enumerated().compactMap { (reversedIndex, session) in
@@ -83,13 +85,18 @@ struct GoalSessionsView: View {
             let yes = session.filter { $0.answer == .yes }.count
             let no  = session.filter { $0.answer == .no }.count
             
-            let sessionNumber = total - reversedIndex
+            // chronologicalIndex: 0 = oldest, total-1 = newest
             let chronologicalIndex = total - 1 - reversedIndex
+            
+            // Session number for display (1..N, oldest = 1)
+            let sessionNumber = chronologicalIndex + 1
+            
             let isNewestSession = (chronologicalIndex == total - 1)
             let isActiveSession = goal.isActive && isNewestSession
             
             return SessionSummary(
-                index: sessionNumber,
+                sessionNumber: sessionNumber,
+                chronologicalIndex: chronologicalIndex,
                 start: first.timestamp,
                 end: last.timestamp,
                 duration: max(0, last.timestamp.timeIntervalSince(first.timestamp)),
@@ -97,11 +104,10 @@ struct GoalSessionsView: View {
                 noCount: no,
                 totalResponses: session.count,
                 isActive: isActiveSession,
-                successThreshold: goal.successThreshold    // 👈 here
+                successThreshold: goal.successThreshold
             )
         }
     }
-
 
 
     
@@ -148,7 +154,7 @@ private struct SessionRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Session \(summary.index)")
+                Text("Session \(summary.sessionNumber)")
                     .font(.headline)
                 
                 Spacer()

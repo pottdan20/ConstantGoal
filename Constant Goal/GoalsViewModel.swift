@@ -33,6 +33,22 @@ final class GoalsViewModel: ObservableObject {
         
         saveGoals()
     }
+    
+    func setSessionTitle(goalId: UUID, sessionIndex: Int, title: String) {
+        guard let goalIdx = goals.firstIndex(where: { $0.id == goalId }) else { return }
+        
+        var titles = goals[goalIdx].sessionTitles
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if trimmed.isEmpty {
+            titles.removeValue(forKey: sessionIndex)   // clear title if blank
+        } else {
+            titles[sessionIndex] = trimmed
+        }
+        
+        goals[goalIdx].sessionTitles = titles
+        saveGoals()
+    }
 
     func addGoal(title: String, intervalMinutes: Int, successThreshold: Int) {
         let goal = Goal(
