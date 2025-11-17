@@ -83,11 +83,21 @@ struct SessionDetailView: View {
                             Text("Response Timeline")
                                 .font(.headline)
                             
-                            ForEach(stats.orderedResponses.indices, id: \.self) { idx in
-                                let r = stats.orderedResponses[idx]
-                                TimelineRow(response: r)
+                            let timelineEvents = buildTimeline(
+                                for: session,
+                                intervalMinutes: goal.intervalMinutes
+                            )
+                            
+                            ForEach(timelineEvents.indices, id: \.self) { idx in
+                                switch timelineEvents[idx] {
+                                case .actual(let r):
+                                    TimelineRow(response: r)
+                                case .missed(let t):
+                                    MissedTimelineRow(timestamp: t)
+                                }
                             }
                             
+                            // End marker still based on last actual response
                             if let last = stats.orderedResponses.last {
                                 TimelineEndRow(endTime: last.timestamp)
                             }
@@ -151,6 +161,44 @@ struct SessionDetailView: View {
         }
         
         return sessions
+    }
+    
+    // MARK: - Timeline events (actual + missed)
+
+    private enum TimelineEvent {
+        case actual(GoalResponse)
+        case missed(Date)   // synthetic "missed response" at this time
+    }
+
+    private func buildTimeline(
+        for session: [GoalResponse],
+        intervalMinutes: Int
+    ) -> [TimelineEvent] {
+        let ordered = session.sorted { $0.timestamp < $1.timestamp }
+        guard !ordered.isEmpty else { return [] }
+        
+        var events: [TimelineEvent] = []
+        let interval = TimeInterval(intervalMinutes * 60)
+        
+        for i in 0..<ordered.count {
+            let current = ordered[i]
+            events.append(.actual(current))
+            
+            // Look ahead to next real response
+            if i < ordered.count - 1 {
+                let next = ordered[i + 1]
+                let gap = next.timestamp.timeIntervalSince(current.timestamp)
+                
+                // If the gap is >= 2x interval, we treat it as a missed ping
+                if gap >= interval * 2 {
+                    // Place the "missed" event approximately at the first missed slot
+                    let missedTime = current.timestamp.addingTimeInterval(interval)
+                    events.append(.missed(missedTime))
+                }
+            }
+        }
+        
+        return events
     }
     
     // MARK: - Stats
@@ -258,6 +306,37 @@ private struct TimelineRow: View {
         case .none:        return "No response (none)"
         case .sessionEnd:  return "End"
         }
+    }
+}
+
+private struct MissedTimelineRow: View {
+    let timestamp: Date
+    
+    private static let timeFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateStyle = .none
+        df.timeStyle = .medium
+        return df
+    }()
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Yellow square for missed response
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.yellow)
+                .frame(width: 18, height: 18)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Self.timeFormatter.string(from: timestamp))
+                    .font(.subheadline)
+                Text("Missed response")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+        }
+        .padding(.vertical, 2)
     }
 }
 

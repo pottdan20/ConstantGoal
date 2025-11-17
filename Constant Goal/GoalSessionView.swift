@@ -12,7 +12,6 @@ struct GoalSessionsView: View {
             )
         }
         
-        // 🔍 DEBUG: see what this screen thinks the responses are
         let _ = debugPrint(
             "📊 GoalSessionsView for '\(goal.title)': " +
             "responses=\(goal.responses.count), " +
@@ -21,14 +20,28 @@ struct GoalSessionsView: View {
         
         let sessions = buildSessionSummaries(for: goal)
         
+        // 🔎 Detect: goal is active, but NO responses in current session
+        let hasCurrentSessionWithResponses =
+            !goal.responses.isEmpty && goal.responses.last?.answer != .sessionEnd
+        let showActiveEmptySession = goal.isActive && !hasCurrentSessionWithResponses
+        
         return AnyView(
             List {
-                if sessions.isEmpty {
+                if sessions.isEmpty && !showActiveEmptySession {
                     Text("No sessions yet.\nStart and pause this goal to create sessions.")
                         .multilineTextAlignment(.center)
                         .foregroundColor(.secondary)
                         .padding()
                 } else {
+                    // 🔹 Placeholder for active session with 0 responses
+                    if showActiveEmptySession {
+                        ActiveEmptySessionRow(
+                            sessionNumber: sessions.count + 1,  // next chronological session
+                            goal: goal
+                        )
+                    }
+                    
+                    // 🔹 Existing sessions (newest → oldest)
                     ForEach(sessions) { summary in
                         NavigationLink {
                             SessionDetailView(
@@ -44,7 +57,7 @@ struct GoalSessionsView: View {
             .navigationTitle("Sessions")
         )
     }
-    
+
     // MARK: - Session summary model
     
     struct SessionSummary: Identifiable {
@@ -136,6 +149,66 @@ struct GoalSessionsView: View {
         
         debugPrint("🔎 splitIntoSessionsByEnd → \(sessions.count) sessions")
         return sessions
+    }
+}
+
+private struct ActiveEmptySessionRow: View {
+    let sessionNumber: Int
+    let goal: Goal
+    
+    private static let timeFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.dateStyle = .none
+        df.timeStyle = .medium
+        return df
+    }()
+    
+    // Approximate start: one interval before nextFireDate, or "now"
+    private var startTime: Date {
+        if let next = goal.nextFireDate {
+            return next.addingTimeInterval(-TimeInterval(goal.intervalMinutes * 60))
+        } else {
+            return Date()
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Session \(sessionNumber)")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Text("No responses yet")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Text("ACTIVE")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.green.opacity(0.2))
+                    .foregroundColor(.green)
+                    .clipShape(Capsule())
+            }
+            
+            HStack {
+                Text("Responses: 0")
+                Spacer()
+                Text("Duration: just started")
+            }
+            .font(.subheadline)
+            
+            Text("Started: \(Self.timeFormatter.string(from: startTime))")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
+        .background(Color.green.opacity(0.08))
+        .cornerRadius(8)
     }
 }
 
