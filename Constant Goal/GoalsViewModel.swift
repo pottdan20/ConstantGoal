@@ -33,7 +33,17 @@ final class GoalsViewModel: ObservableObject {
         
         saveGoals()
     }
-    
+
+    func addGoal(title: String, intervalMinutes: Int, successThreshold: Int) {
+        let goal = Goal(
+            title: title,
+            intervalMinutes: intervalMinutes,
+            successThreshold: successThreshold
+        )
+        goals.append(goal)
+        saveGoals()
+    }
+
     func toggleGoalActive(_ goal: Goal) {
         guard let index = goals.firstIndex(of: goal) else { return }
         goals[index].isActive.toggle()

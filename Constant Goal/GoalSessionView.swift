@@ -56,7 +56,8 @@ struct GoalSessionsView: View {
         let yesCount: Int
         let noCount: Int
         let totalResponses: Int
-        let isActive: Bool  // 👈 whether this is the current active session
+        let isActive: Bool
+        let successThreshold: Int   // 👈 from Goal
         
         var yesNoDenominator: Int {
             yesCount + noCount
@@ -67,6 +68,7 @@ struct GoalSessionsView: View {
             return Double(yesCount) / Double(yesNoDenominator)
         }
     }
+
 
     
     // MARK: - Build sessions from responses
@@ -81,13 +83,8 @@ struct GoalSessionsView: View {
             let yes = session.filter { $0.answer == .yes }.count
             let no  = session.filter { $0.answer == .no }.count
             
-            // Session number: 1 = oldest, N = newest
             let sessionNumber = total - reversedIndex
-            
-            // Chronological index (0 = oldest, total-1 = newest)
             let chronologicalIndex = total - 1 - reversedIndex
-            
-            // Active session = newest session AND goal is active
             let isNewestSession = (chronologicalIndex == total - 1)
             let isActiveSession = goal.isActive && isNewestSession
             
@@ -98,8 +95,9 @@ struct GoalSessionsView: View {
                 duration: max(0, last.timestamp.timeIntervalSince(first.timestamp)),
                 yesCount: yes,
                 noCount: no,
-                totalResponses: session.count,   // all responses in this session
-                isActive: isActiveSession
+                totalResponses: session.count,
+                isActive: isActiveSession,
+                successThreshold: goal.successThreshold    // 👈 here
             )
         }
     }
@@ -149,7 +147,6 @@ private struct SessionRowView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Top line: Session N — 87% Yes — [ACTIVE]
             HStack {
                 Text("Session \(summary.index)")
                     .font(.headline)
@@ -157,9 +154,12 @@ private struct SessionRowView: View {
                 Spacer()
                 
                 if summary.yesNoDenominator > 0 {
-                    Text(String(format: "%.0f%% Yes", summary.yesRatio * 100))
+                    let pct = summary.yesRatio * 100.0
+                    let meets = pct >= Double(summary.successThreshold)
+                    
+                    Text(String(format: "%.0f%% Yes", pct))
                         .font(.subheadline)
-                        .foregroundColor(.green)
+                        .foregroundColor(meets ? .green : .red)   // 👈 green if ≥ threshold, red otherwise
                 } else {
                     Text("No Yes/No data")
                         .font(.subheadline)
@@ -178,7 +178,6 @@ private struct SessionRowView: View {
                 }
             }
             
-            // Second line: Responses + Duration
             HStack {
                 Text("Responses: \(summary.totalResponses)")
                 Spacer()
@@ -186,7 +185,6 @@ private struct SessionRowView: View {
             }
             .font(.subheadline)
             
-            // Start / End times
             Text("Start: \(Self.dateFormatter.string(from: summary.start))")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -196,7 +194,7 @@ private struct SessionRowView: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 4)
-        .background(summary.isActive ? Color.green.opacity(0.08) : Color.clear) // subtle highlight
+        .background(summary.isActive ? Color.green.opacity(0.08) : Color.clear)
         .cornerRadius(8)
     }
     
