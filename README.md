@@ -1,0 +1,1 @@
+Quick iOS App to add goals and track their progress with frequent notifications. These notifications prompt the user to indicate whether they were successful in achieving their goal since the last notification.
